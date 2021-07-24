@@ -1,6 +1,6 @@
 # ShazamKit: A first look
 
-<!-- This demo project is associated with my article [ShazamKit: A first look](https://yaacoub.github.io/articles/swift/shazamkit-a-first-look/). -->
+This demo project is associated with my article [ShazamKit: A first look](https://yaacoub.github.io/articles/swift/shazamkit-a-first-look/).
 
 ### Availability
 
