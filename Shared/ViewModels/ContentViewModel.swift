@@ -42,18 +42,40 @@ class ContentViewModel: NSObject, ObservableObject {
     
     //MARK:- Private Methods
     
-    private func buffer() -> AVAudioPCMBuffer? {
-        guard let audioFileURL = audioFileURL,
-              let audioFile = try? AVAudioFile(forReading: audioFileURL) else { return nil }
-        let pcmFormat = audioFile.processingFormat
-        let frameCapacity = AVAudioFrameCount(12 * audioFile.fileFormat.sampleRate)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: pcmFormat, frameCapacity: frameCapacity) else { return nil }
-        try? audioFile.read(into: buffer)
-        return buffer
+    private func buffer(audioFile: AVAudioFile, outputFormat: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let frameCount = AVAudioFrameCount((1024 * 64) / (audioFile.processingFormat.streamDescription.pointee.mBytesPerFrame))
+        let outputFrameCapacity = AVAudioFrameCount(12 * audioFile.fileFormat.sampleRate)
+        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: frameCount),
+              let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: outputFrameCapacity),
+              let converter = AVAudioConverter(from: audioFile.processingFormat, to: outputFormat) else { return nil }
+        while true {
+            let status = converter.convert(to: outputBuffer, error: nil) { inNumPackets, outStatus in
+                do {
+                    try audioFile.read(into: inputBuffer)
+                    outStatus.pointee = .haveData
+                    return inputBuffer
+                } catch {
+                    if audioFile.framePosition >= audioFile.length {
+                        outStatus.pointee = .endOfStream
+                        return nil
+                    } else {
+                        outStatus.pointee = .noDataNow
+                        return nil
+                    }
+                }
+            }
+            switch status {
+            case .endOfStream, .error: return nil
+            default: return outputBuffer
+            }
+        }
     }
     
     private func signature() -> SHSignature? {
-        guard let buffer = buffer() else { return nil }
+        guard let audioFileURL = audioFileURL,
+              let audioFile = try? AVAudioFile(forReading: audioFileURL),
+              let audioFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1),
+              let buffer = buffer(audioFile: audioFile, outputFormat: audioFormat) else { return nil }
         let signatureGenerator = SHSignatureGenerator()
         try? signatureGenerator.append(buffer, at: nil)
         return signatureGenerator.signature()

@@ -56,9 +56,9 @@ struct ContentView: View {
                 .padding(.vertical)
             Button(viewModel.isMatching ? "Matching…" : "Match preexisting audio", action: viewModel.startMatching)
                 .disabled(viewModel.isMatching)
+                .padding(.vertical)
         }
-        .buttonStyle(.bordered)
-        .controlProminence(.increased)
+        .buttonStyle(.borderedProminent)
         .controlSize(.large)
         .tint(.blue)
     }
